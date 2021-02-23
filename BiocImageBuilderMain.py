@@ -423,7 +423,7 @@ class UIDockerBuilder(QtWidgets.QWidget):
         else:
             previous_package = self.SelectedCranPackage.copy()
             
-        print("PRV PKG:", previous_package)
+        print("Previous packages:", previous_package)
         if previous_package:
             for pkg_item in previous_package:
                 print("pkg_item:", pkg_item)
@@ -554,29 +554,16 @@ class UIDockerBuilder(QtWidgets.QWidget):
         base_conda_install = "RUN conda install {0}\n"
         channels = "RUN conda config --add channels defaults\nRUN conda config --add channels bioconda\nRUN conda config --add channels conda-forge\n"
         conda_update = "\nRUN conda update conda\n" #added this as precautionary to common issues I saw online for conda installations
-# =============================================================================
-#         if self.FLAG_binder_compatible:
-#         #if self.chkBinderCompatible.isChecked():
-#             base_bioclite = "RUN echo \"source('http://bioconductor.org/biocLite.R'); biocLite(c({0}))\" | R --vanilla\n"
-# =============================================================================
 
         previous = ' '.join("{0}".format(w) for w in previous_package)
         current = ' '.join("{0}".format(w) for w in self.SelectedBiocondaPackage)
-        
-# =============================================================================
-#         print("CURRENT:",current)
-# =============================================================================
 
         # no package selected, delete
         delete_mode = previous_package and not self.SelectedBiocondaPackage
         if delete_mode: current = ''
 
         plainText = self.txtDockerfile.toPlainText()
-        
         cursor = self.txtDockerfile.textCursor()
-# =============================================================================
-#         print(cursor.hasSelection())
-# =============================================================================
         if channels not in plainText:
             if plainText == '':
                 cursor.insertText(channels+conda_update)
@@ -631,7 +618,6 @@ class UIDockerBuilder(QtWidgets.QWidget):
                 self.SelectedBiocondaPackage.remove(package_name)
             elif package_name not in previous_package:
                 self.SelectedBiocondaPackage.append(package_name)
-            print('previous package:', previous_package)
             self._update_bioconda_package_in_dockerfile(previous_package)
         elif 'Bioconductor' in packageSelected:
             previous_package = self.SelectedBiocPackage.copy() + self.SelectedCranPackage.copy()
@@ -644,7 +630,6 @@ class UIDockerBuilder(QtWidgets.QWidget):
             previous_package = self.SelectedBiocPackage.copy() + self.SelectedCranPackage.copy()
             if not item.checkState():
                 self.SelectedCranPackage.remove(package_name)
-            elif package_name not in previous_package:
                 self.SelectedCranPackage.append(package_name)
             self._update_bioc_package_in_dockerfile(previous_package)
             
