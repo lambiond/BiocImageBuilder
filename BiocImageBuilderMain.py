@@ -216,8 +216,14 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.btnBuild.setObjectName("btnBuild")
         self.hlayout_buttons.addWidget(self.btnOpen)
         self.hlayout_buttons.addWidget(self.btnSave)
-        self.hlayout_buttons.addItem(QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
+# =============================================================================
+#         self.hlayout_buttons.addItem(QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum))
+# =============================================================================
         self.hlayout_buttons.addWidget(self.btnBuild)
+        self.btnUpdate = QtWidgets.QPushButton(self.mainContent)
+        self.btnUpdate.setFixedSize(QtCore.QSize(110, 30))
+        self.btnUpdate.setObjectName("btnUpdate")
+        self.hlayout_buttons.addWidget(self.btnUpdate, alignment=QtCore.Qt.AlignRight)
         self.vlayout_content.addLayout(self.hlayout_buttons)
         
         # Right bioconductor packages aera
@@ -227,9 +233,9 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.vlayout_packages.setContentsMargins(0, 0, 0, 0)
         self.lblInfoTitle = QtWidgets.QLabel(self.mainContent)
         self.lblInfoTitle.setMinimumSize(QtCore.QSize(0, 30))
-        self.lblInfoTitle.setMaximumSize(QtCore.QSize(16777215, 30))
+        self.lblInfoTitle.setMaximumSize(QtCore.QSize(1677721, 30))
         self.lblInfoTitle.setObjectName("lblInfoTitle")
-        self.vlayout_packages.addWidget(self.lblInfoTitle)
+        self.vlayout_packages.addWidget(self.lblInfoTitle, QtCore.Qt.AlignLeft)
 
         # Danielle
         self.packageTypeSelect = QtWidgets.QComboBox(self.mainContent)
@@ -313,6 +319,7 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.btnBuild.clicked.connect(self.OnBuildClicked)
         self.btnOpen.clicked.connect(self.OnLoadDockerfile)
         self.btnSave.clicked.connect(self.OnSaveDockerfile)
+        self.btnUpdate.clicked.connect(self.OnUpdateClicked)
         self.cboBaseImage.currentIndexChanged.connect(self.OnBaseImageSelectChanged)
         self.packageTypeSelect.currentIndexChanged.connect(self.OnPackageLibrarySelectedChanged)
         self.edtPackageName.textChanged.connect(self.OnPackageNameChanged)
@@ -332,7 +339,6 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.lblRScript.setText(_translate("Widget", "Select R script:"))
         self.btnSelectScriptFile.setText(_translate("Widget", " ☰ "))
         self.lblDockerfile.setText(_translate("Widget", "Builder detail: "))
-        self.btnBuild.setText(_translate("Form", "Build"))
         self.lblDockerVersion.setText(_translate("Form", "Docker Engine: {0}"))
         #self.lblBuiding.setText(_translate("Form", 'Ready'))
         self.lblDockerfile.setText(_translate("Form", "Docker file:"))
@@ -340,6 +346,7 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.btnSave.setText(_translate("Form", "Save"))
         self.btnBuild.setText(_translate("Form", "Build"))
         self.lblInfoTitle.setText(_translate("Form", "Package Selection"))
+        self.btnUpdate.setText(_translate("Form", "Update Package"))
         #self.chkBinderCompatible.setText(_translate("Form", "Binder Compatible"))
 
     def InitializeUI(self):
@@ -364,6 +371,7 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.SelectedBiocPackage = []
         self.SelectedCranPackage = []
         self.SelectedBiocondaPackage = []
+        self.currentSelection = "Bioconductor"
         self.lblDockerVersion.setText(strDockerInfo)
         #self.dockerClient.images()
 
@@ -402,36 +410,8 @@ class UIDockerBuilder(QtWidgets.QWidget):
 # =============================================================================
     def OnPackageLibrarySelectedChanged(self, index):
         packageSelected = self.packageTypeSelect.itemData(index)
+        self.currentSelection = packageSelected
         self.LoadPackageList(packageSelected)
-        # added a sleep to wait for the package list to finish populating before
-        # attempting to recheck selections. May not be necessary
-        while self.loadpackage_thread.isRunning():
-            time.sleep(1)
-            
-        # This is printing out packages to be populated in the selection list
-        # not what I want
-# =============================================================================
-#         print("PACKAGE NAME", self.model_package.item(0).text())
-# =============================================================================
-
-        # This gets a list of packages that were added to the dockerfile prior
-        # to changing to a different library selection
-        if 'Bioconda' in packageSelected:
-            previous_package = self.SelectedBiocondaPackage.copy()
-        elif 'Bioconductor' in packageSelected:
-            previous_package = self.SelectedBiocPackage.copy()
-        else:
-            previous_package = self.SelectedCranPackage.copy()
-            
-        print("Previous packages:", previous_package)
-        if previous_package:
-            for pkg_item in previous_package:
-                print("pkg_item:", pkg_item)
-                items = self.model_package.findItems(pkg_item)
-                print("ITEMS:", items)
-                if items:
-                    print('FIND ITEMS:',self.model_package.findItems(pkg_item)[0].checkState())
-                    self.model_package.findItems(pkg_item)[0].setCheckState(2)
             
     def documentFromDockerfile(self, filename):
         doc = QTextDocument(self)
@@ -485,7 +465,7 @@ class UIDockerBuilder(QtWidgets.QWidget):
         self.lstPackages.setModel(self.package_list_proxy)
         #self.lstPackages.resizeColumnToContents(0)
         self.lstPackages.setColumnWidth(0, 190)
-        self.lstPackages.setColumnWidth(1, 130)
+        self.lstPackages.setColumnWidth(1, 300)
 
     @pyqtSlot(str)
     def OnPackageNameChanged(self, text):
@@ -605,33 +585,45 @@ class UIDockerBuilder(QtWidgets.QWidget):
     def OnPackageListSelectedChanged(self, item):
         package_name = item.text()
         packageSelected = self.packageTypeSelect.currentText()
+        
         if 'Bioconda' in packageSelected:
             previous_package = self.SelectedBiocondaPackage.copy()
-# =============================================================================
-#             #this is occuring every time a check box is touched, only should happen on pkg change
-#             if self.SelectedBiocondaPackage:
-#                 for pkg_item in self.SelectedBiocondaPackage:
-#                     print('FIND:',self.model_package.findItems(pkg_item)[0].checkState())
-#                     self.model_package.findItems(pkg_item)[0].setCheckState(2)
-# =============================================================================
+            #this is occuring every time a check box is touched, only should happen on pkg change
+            if previous_package:
+                for pkg_item in previous_package:
+                    print('FIND:',self.model_package.findItems(pkg_item)[0].checkState())
+                    if not self.model_package.findItems(pkg_item)[0].checkState():
+                        self.model_package.findItems(pkg_item)[0].setCheckState(2)
             if not item.checkState():
                 self.SelectedBiocondaPackage.remove(package_name)
             elif package_name not in previous_package:
                 self.SelectedBiocondaPackage.append(package_name)
             self._update_bioconda_package_in_dockerfile(previous_package)
+            
         elif 'Bioconductor' in packageSelected:
-            previous_package = self.SelectedBiocPackage.copy() + self.SelectedCranPackage.copy()
+            previous_package = self.SelectedBiocPackage.copy()
+            if previous_package:
+                for pkg_item in previous_package:
+                    if not self.model_package.findItems(pkg_item)[0].checkState():
+                        self.model_package.findItems(pkg_item)[0].setCheckState(2)
             if not item.checkState():
                 self.SelectedBiocPackage.remove(package_name)
             elif package_name not in previous_package:
                 self.SelectedBiocPackage.append(package_name)
-            self._update_bioc_package_in_dockerfile(previous_package)
+            
+            self._update_bioc_package_in_dockerfile(previous_package+self.SelectedCranPackage.copy())
         else:
-            previous_package = self.SelectedBiocPackage.copy() + self.SelectedCranPackage.copy()
+            previous_package = self.SelectedCranPackage.copy()
+            if previous_package:
+                for pkg_item in previous_package:
+                    if not self.model_package.findItems(pkg_item)[0].checkState():
+                        self.model_package.findItems(pkg_item)[0].setCheckState(2)
             if not item.checkState():
                 self.SelectedCranPackage.remove(package_name)
+            elif package_name not in previous_package:
                 self.SelectedCranPackage.append(package_name)
-            self._update_bioc_package_in_dockerfile(previous_package)
+                
+            self._update_bioc_package_in_dockerfile(self.SelectedBiocPackage.copy()+previous_package)
             
 
     def OnSaveDockerfile(self):
@@ -664,6 +656,22 @@ class UIDockerBuilder(QtWidgets.QWidget):
             else:
                 self.cboBaseImage.addItem(itemName, filename)
                 self.cboBaseImage.setCurrentIndex(self.cboBaseImage.findData(filename))
+                
+    def OnUpdateClicked(self, index):
+        packageSelected = self.currentSelection
+        print(packageSelected)
+        if 'Bioconductor' in packageSelected:
+            self.loadpackage_thread = UpdateBiocPackageList()
+            self.loadpackage_thread.load_completed.connect(self.ThreadEvent_OnLoadBiocPackageCompleted)
+            self.loadpackage_thread.start()
+        elif 'CRAN' in packageSelected:
+            self.loadCRAN_thread = UpdateCRANPackageList()
+            self.loadCRAN_thread.load_completed.connect(self.ThreadEvent_OnLoadBiocPackageCompleted)
+            self.loadCRAN_thread.start()
+        elif 'Bioconda' in packageSelected:
+            self.loadconda_thread = UpdateBiocondaPackageList()
+            self.loadconda_thread.load_completed.connect(self.ThreadEvent_OnLoadBiocPackageCompleted)
+            self.loadconda_thread.start()
 
     def _set_building_text(self, labelCtrl, text):
         metrics = QtGui.QFontMetrics(labelCtrl.font())
@@ -811,6 +819,19 @@ from bs4 import BeautifulSoup
 
 class BiocPackageList(QThread):
     load_completed = pyqtSignal(object)
+    def __init__(self):
+        QThread.__init__(self)
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        with open('./config/biocConfig.json', 'r') as fin:
+            package_list = json.load(fin)
+        self.load_completed.emit(package_list)
+
+class UpdateBiocPackageList(QThread):
+    load_completed = pyqtSignal(object)
     #fetch_url = "http://bioconductor.org/packages/release/BiocViews.html#___Software"
     package_json_url = [
         "https://bioconductor.org/packages/json/3.5/bioc/packages.js",
@@ -839,11 +860,24 @@ class BiocPackageList(QThread):
             print (str(e))
 
         package_list = sorted(package_list, key=lambda x: x['Name'].lower())
-        #print(len(package_list))
-
+        with open('./config/biocConfig.json', 'w') as fout:
+            json.dump(package_list, fout)
         self.load_completed.emit(package_list)
 
 class CRANPackageList(QThread):
+    load_completed = pyqtSignal(object)
+    def __init__(self):
+        QThread.__init__(self)
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        with open('./config/cranConfig.json', 'r') as fin:
+            package_list = json.load(fin)
+        self.load_completed.emit(package_list)
+
+class UpdateCRANPackageList(QThread):
     load_completed = pyqtSignal(object)
     
     cran_packages_url = "https://cran.r-project.org/web/packages/available_packages_by_name.html"
@@ -874,7 +908,21 @@ class CRANPackageList(QThread):
 
         package_list = sorted(package_list, key=lambda x: x['Name'].lower())
         #print(len(package_list))
+        with open('./config/cranConfig.json', 'w') as fout:
+            json.dump(package_list, fout)
+        self.load_completed.emit(package_list)
 
+class BiocondaPackageList(QThread):
+    load_completed = pyqtSignal(object)
+    def __init__(self):
+        QThread.__init__(self)
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        with open('./config/biocondaConfig.json', 'r') as fin:
+            package_list = json.load(fin)
         self.load_completed.emit(package_list)
         
 # =============================================================================
@@ -882,14 +930,10 @@ class CRANPackageList(QThread):
 # description: Scrapes bioconda packages for package names and descriptions
 # from the anaconda site to store.
 # =============================================================================
-class BiocondaPackageList(QThread):
+class UpdateBiocondaPackageList(QThread):
     load_completed = pyqtSignal(object)
     
     bioconda_packages_url = "https://anaconda.org/bioconda/repo?page={}"
-# =============================================================================
-#     bioconda_packages_url = ["https://anaconda.org/bioconda/repo?page=1", 
-#                              "https://anaconda.org/bioconda/repo?page=2"]
-# =============================================================================
 
     def __init__(self):
         QThread.__init__(self)
@@ -901,7 +945,7 @@ class BiocondaPackageList(QThread):
         package_list = []
         # load package list from Bioconda
         try:
-            for i in range(1, 3): #166 for entire package list
+            for i in range(1,169): #168 for entire package list
                 url = self.bioconda_packages_url.format(i)
                 print(url)
                 html = requests.get(url)
@@ -915,7 +959,12 @@ class BiocondaPackageList(QThread):
                                 #name = links[0].contents[0]
                                 for link in links:
                                     name = link.findAll("span")[0].contents[0]
-                                title = cells[2].string.strip()
+                                if cells[2].string:
+                                    title = cells[2].string.strip()
+                                else:
+                                    title = str(cells[2]).split(" &", 1)[0]
+                                    if not title:
+                                        title = "No description found"
                                 package_list.append({"Name": name, "Title": title})
         except Exception as e:
             print(str(e))
@@ -923,7 +972,8 @@ class BiocondaPackageList(QThread):
         #pprint.pprint(package_list[:10])
         package_list = sorted(package_list, key=lambda x: x['Name'].lower())
         print(len(package_list))
-
+        with open('./config/biocondaConfig.json', 'w') as fout:
+            json.dump(package_list, fout)
         self.load_completed.emit(package_list)
 
 def main(argv=sys.argv):
